@@ -1,0 +1,36 @@
+# Rust build artifacts
+target/
+
+# Environment / secrets — NEVER commit these
+.env
+*.env
+.envrc
+
+# macOS
+.DS_Store
+.AppleDouble
+Icon?
+._*
+*.dmg
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Audio test files
+*.m4a
+*.wav
+*.mp3
+*.aiff
+
+# Python prototype artifacts
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+.python-version

@@ -1,0 +1,40 @@
+ [package]
+name = "openflow"
+version = "0.1.0"
+edition = "2024"
+description = "Open-source Wispr Flow clone — fast, private, voice-to-text for macOS"
+license = "MIT"
+repository = "https://github.com/vishnuhari17/openflow"
+homepage = "https://github.com/vishnuhari17/openflow"
+keywords = ["voice", "transcription", "macos", "whisper", "dictation"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "openflow"
+path = "src/main.rs"
+
+[dependencies]
+cpal = "0.16"
+dotenvy = "0.15"
+hound = "3.5"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3.13"
+toml = "0.8"
+png = "0.17"
+
+# Menubar tray icon
+tray-icon = "0.19"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+winit = { version = "0.29", features = [] }
+
+# cargo-dist release automation
+# run `cargo dist init` to finalize GitHub Actions CI + Homebrew tap
+[package.metadata.dist]
+cargo-dist-version = "0.22.1"
+ci = ["github"]
+installers = ["homebrew"]
+tap = "vishnuhari17/homebrew-tap"
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
