@@ -7,8 +7,8 @@
 ![Demo](docs/demo.gif)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/vishnuhari17/openflow/release.yml?label=build)](https://github.com/vishnuhari17/openflow/actions)
-[![Release](https://img.shields.io/github/v/release/vishnuhari17/openflow)](https://github.com/vishnuhari17/openflow/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/vishnuhari17/openflow/release.yml?label=build)](https://github.com/vishnuhari17/OpenFlow/actions)
+[![Release](https://img.shields.io/github/v/release/vishnuhari17/openflow)](https://github.com/vishnuhari17/OpenFlow/releases)
 
 ---
 
@@ -68,13 +68,13 @@ brew install vishnuhari17/tap/openflow
 
 ### Manual (DMG)
 
-Download the latest `.dmg` from [Releases](https://github.com/vishnuhari17/openflow/releases), drag `OpenFlow.app` to Applications, and double-click to launch.
+Download the latest `.dmg` from [Releases](https://github.com/vishnuhari17/OpenFlow/releases), drag `OpenFlow.app` to Applications, and double-click to launch.
 
 ### Build from source
 
 ```sh
-git clone https://github.com/vishnuhari17/openflow
-cd openflow
+git clone https://github.com/vishnuhari17/OpenFlow
+cd OpenFlow
 cargo build --release
 ./target/release/openflow setup
 ./target/release/openflow live
