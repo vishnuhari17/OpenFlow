@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 description = "Open-source Wispr Flow clone — fast, private, voice-to-text for macOS"
 license = "MIT"
-repository = "https://github.com/vishnuhari17/openflow"
-homepage = "https://github.com/vishnuhari17/openflow"
+repository = "https://github.com/vishnuhari17/OpenFlow"
+homepage = "https://github.com/vishnuhari17/OpenFlow"
 keywords = ["voice", "transcription", "macos", "whisper", "dictation"]
 categories = ["command-line-utilities"]
 
@@ -30,11 +30,7 @@ tray-icon = "0.19"
 [target.'cfg(target_os = "macos")'.dependencies]
 winit = { version = "0.29", features = [] }
 
-# cargo-dist release automation
-# run `cargo dist init` to finalize GitHub Actions CI + Homebrew tap
-[package.metadata.dist]
-cargo-dist-version = "0.22.1"
-ci = ["github"]
-installers = ["homebrew"]
-tap = "vishnuhari17/homebrew-tap"
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
