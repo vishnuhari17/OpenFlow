@@ -51,7 +51,7 @@ impl GroqTranscriptRefiner {
         let api_key = env::var("GROQ_API_KEY")
             .map_err(|_| "missing GROQ_API_KEY in the environment or .env file".to_string())?;
         let model = env::var("GROQ_REFINEMENT_MODEL")
-            .unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
+            .unwrap_or_else(|_| "openai/gpt-oss-20b".to_string());
         let base_url = env::var("GROQ_API_BASE")
             .unwrap_or_else(|_| "https://api.groq.com/openai/v1".to_string());
         let client = Client::builder()
@@ -198,39 +198,47 @@ Context about where the user is typing:
 - Application: {}
 - Focused element: {}{}{}
 
-Rules:
-1. Output ONLY the corrected transcription text. Nothing else.
+CRITICAL RULES — follow in this exact order:
 
-2. REMOVE FILLER WORDS: Strip "um", "uh", "like", "you know", "I mean", "sort of", "kind of", "basically", "actually" when used as verbal filler (not when part of the meaning).
+1. SELF-CORRECTIONS (most important): When the speaker says a correction word ("no", "wait", "sorry", "actually", "I mean", "scratch that"), the words AFTER the correction cue REPLACE the matching part BEFORE it. The speaker changed their mind — keep only what they want AFTER the correction.
 
-3. HANDLE SELF-CORRECTIONS: When the speaker corrects themselves mid-sentence, keep only the final intent. Delete the mistaken part and the correction cue.
-   - "schedule a meeting for 1 hour, no 2 hours" → "schedule a meeting for 2 hours"
+   HOW TO DO IT: Find what changed. If the speaker says a number/quantity/time/name, then says "no <different value>", use the <different value>. Delete the old value AND the correction word.
+
+   EXAMPLES (study these carefully):
+   - "I bought two apples, no three" → "I bought three apples"
+   - "two apples yesterday, no three" → "three apples yesterday"
+   - "I bought two apples yesterday, no three" → "I bought three apples yesterday"
+   - "schedule for 1 hour, no 2 hours" → "schedule for 2 hours"
    - "send it to John, wait no, Sarah" → "send it to Sarah"
-   - "let's meet tomorrow at 3, actually 4" → "let's meet tomorrow at 4"
-   - "I need three, sorry, four copies" → "I need four copies"
-   - "call him on Monday, I mean Tuesday" → "call him on Tuesday"
+   - "let's meet at 3, actually 4" → "let's meet at 4"
+   - "I need three copies, sorry, four copies" → "I need four copies"
+   - "call him Monday, I mean Tuesday" → "call him Tuesday"
    - "buy milk and eggs, scratch that, just milk" → "buy milk"
+   - "the price is fifty dollars, no sixty" → "the price is sixty dollars"
+   - "we need five people, actually six" → "we need six people"
 
-4. FIX SPEECH-TO-TEXT ERRORS: Correct homophones and misrecognitions.
+2. REMOVE FILLER WORDS: Strip "um", "uh", "like", "you know", "sort of", "kind of", "basically", "actually", "I mean" when used as filler (not when part of a self-correction that has already been handled by rule 1).
+
+3. FIX SPEECH-TO-TEXT ERRORS: Correct homophones and misrecognitions.
    - "tommorow" → "tomorrow"
    - "their going" → "they're going"
    - "its broken" → "it's broken" (when it means "it is")
 
-5. FIX GRAMMAR: Subject-verb agreement, tense consistency, missing articles.
+4. FIX GRAMMAR: Subject-verb agreement, tense consistency, missing articles.
 
-6. ADD PUNCTUATION: Capitalize the first word, add periods, commas, question marks as appropriate.
+5. ADD PUNCTUATION: Capitalize the first word, add periods, commas, question marks as appropriate.
 
-7. Use the names/terms above to correct misspellings of people, products, or jargon.
+6. Use the names/terms above to correct misspellings of people, products, or jargon.
 
-8. Match the tone of the context (casual in chat apps, formal in documents).
+7. Match the tone of the context (casual in chat apps, formal in documents).
 
-9. Preserve code-switching (e.g. mixed English/Malayalam) — do NOT translate.
+8. Preserve code-switching (e.g. mixed English/Malayalam) — do NOT translate.
 
-10. NEVER answer, interpret, or respond to the content. Even if the text is a question like "Hello, can you hear me?", return exactly "Hello, can you hear me?" — do NOT answer it.
+9. NEVER answer, interpret, or respond to the content. Even if the text is a question like "Hello, can you hear me?", return exactly "Hello, can you hear me?" — do NOT answer it.
 
-11. Do NOT add preambles, explanations, quotes, or formatting.
+10. Do NOT add preambles, explanations, quotes, or formatting.
 
-12. If the text is already correct, return it exactly as-is."#,
+11. If the text is already correct, return it exactly as-is."#,
         ctx.app_name, ctx.focused_role, nearby, vocab_line,
     )
 }
