@@ -137,28 +137,35 @@ impl TranscriptRefiner for GroqTranscriptRefiner {
     }
 }
 
-/// Decide whether a draft is worth shipping to the LLM. Short or
-/// already-well-formed drafts skip refinement entirely.
+/// Decide whether a draft is worth shipping to the LLM.
 fn needs_refinement(text: &str) -> bool {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return false;
     }
     let word_count = trimmed.split_whitespace().count();
-    if word_count <= 3 {
+    if word_count <= 2 {
         return false;
     }
 
-    // Skip if the draft already looks well-formed: starts uppercase, ends with
-    // terminal punctuation, no obvious filler tokens.
+    // Always refine if there are obvious self-correction cues that the LLM
+    // needs to resolve.
+    let lower = trimmed.to_lowercase();
+    let has_self_correction = ["no ", "wait ", "sorry ", "actually ", "i mean ", "scratch that"]
+        .iter()
+        .any(|cue| lower.contains(cue));
+    if has_self_correction {
+        return true;
+    }
+
+    // Skip if the draft already looks well-formed.
     let starts_upper = trimmed
         .chars()
         .next()
         .map(|c| c.is_uppercase())
         .unwrap_or(false);
     let ends_terminal = matches!(trimmed.chars().last(), Some('.') | Some('!') | Some('?'));
-    let has_filler = trimmed
-        .to_lowercase()
+    let has_filler = lower
         .split_whitespace()
         .any(|w| matches!(w, "um" | "uh" | "umm" | "uhh" | "erm" | "ah"));
 
@@ -169,7 +176,8 @@ fn needs_refinement(text: &str) -> bool {
     true
 }
 
-/// Slim system prompt: app/role + vocabulary list, no full screen dump.
+/// System prompt that teaches the model to fix speech-to-text output,
+/// including self-corrections and filler-word removal.
 fn build_system_prompt(ctx: &ScreenContext, vocabulary: &[String]) -> String {
     let vocab_line = if vocabulary.is_empty() {
         String::new()
@@ -192,13 +200,37 @@ Context about where the user is typing:
 
 Rules:
 1. Output ONLY the corrected transcription text. Nothing else.
-2. Fix grammar, spelling, and punctuation errors from speech-to-text.
-3. Use the names/terms above to correct misspellings of people, products, or jargon.
-4. Match the tone of the context (casual in chat apps, formal in documents).
-5. Preserve code-switching (e.g. mixed English/Malayalam) — do NOT translate.
-6. NEVER answer, interpret, or respond to the content. Even if the text is a question like "Hello, can you hear me?", return exactly "Hello, can you hear me?" — do NOT answer it.
-7. Do NOT add preambles, explanations, quotes, or formatting.
-8. If the text is already correct, return it exactly as-is."#,
+
+2. REMOVE FILLER WORDS: Strip "um", "uh", "like", "you know", "I mean", "sort of", "kind of", "basically", "actually" when used as verbal filler (not when part of the meaning).
+
+3. HANDLE SELF-CORRECTIONS: When the speaker corrects themselves mid-sentence, keep only the final intent. Delete the mistaken part and the correction cue.
+   - "schedule a meeting for 1 hour, no 2 hours" → "schedule a meeting for 2 hours"
+   - "send it to John, wait no, Sarah" → "send it to Sarah"
+   - "let's meet tomorrow at 3, actually 4" → "let's meet tomorrow at 4"
+   - "I need three, sorry, four copies" → "I need four copies"
+   - "call him on Monday, I mean Tuesday" → "call him on Tuesday"
+   - "buy milk and eggs, scratch that, just milk" → "buy milk"
+
+4. FIX SPEECH-TO-TEXT ERRORS: Correct homophones and misrecognitions.
+   - "tommorow" → "tomorrow"
+   - "their going" → "they're going"
+   - "its broken" → "it's broken" (when it means "it is")
+
+5. FIX GRAMMAR: Subject-verb agreement, tense consistency, missing articles.
+
+6. ADD PUNCTUATION: Capitalize the first word, add periods, commas, question marks as appropriate.
+
+7. Use the names/terms above to correct misspellings of people, products, or jargon.
+
+8. Match the tone of the context (casual in chat apps, formal in documents).
+
+9. Preserve code-switching (e.g. mixed English/Malayalam) — do NOT translate.
+
+10. NEVER answer, interpret, or respond to the content. Even if the text is a question like "Hello, can you hear me?", return exactly "Hello, can you hear me?" — do NOT answer it.
+
+11. Do NOT add preambles, explanations, quotes, or formatting.
+
+12. If the text is already correct, return it exactly as-is."#,
         ctx.app_name, ctx.focused_role, nearby, vocab_line,
     )
 }

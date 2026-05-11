@@ -327,6 +327,23 @@ impl AssistantApp {
                     };
                     println!("[transcription] {}", draft.raw_text);
 
+                    // Refine first, then paste the final text — no flicker.
+                    println!("[refinement] refining…");
+                    let final_text = match refiner.refine(&draft, &screen_context, &vocab) {
+                        Ok(refined) => {
+                            if refined.was_refined {
+                                println!("[refinement] {}", refined.text);
+                            } else {
+                                println!("[refinement] no changes needed");
+                            }
+                            refined.text
+                        }
+                        Err(e) => {
+                            eprintln!("[refinement] failed, keeping draft: {e}");
+                            draft.raw_text.clone()
+                        }
+                    };
+
                     // Re-focus original app if the user drifted away while recording.
                     let current_pid = macos::frontmost_pid().unwrap_or(-1);
                     if capture_pid > 0 && current_pid != capture_pid {
@@ -336,35 +353,14 @@ impl AssistantApp {
                         }
                     }
 
-                    // Progressive paste: land the raw draft immediately.
-                    let draft_char_count = draft.raw_text.chars().count();
-                    if let Err(e) = paster.paste_text(&focus_target, &draft.raw_text) {
+                    if let Err(e) = paster.paste_text(&focus_target, &final_text) {
                         eprintln!("[paste] failed: {e}");
                         send(TrayStatus::Error("paste failed".into()));
                         thread::sleep(Duration::from_secs(2));
                         send(TrayStatus::Idle);
                         continue;
                     }
-                    println!("[paste] draft done");
-
-                    // Refinement runs while draft is already visible.
-                    println!("[refinement] refining…");
-                    match refiner.refine(&draft, &screen_context, &vocab) {
-                        Ok(refined) if refined.was_refined => {
-                            println!("[refinement] {}", refined.text);
-                            if let Err(e) = paster.replace_recent_paste(
-                                &focus_target,
-                                draft_char_count,
-                                &refined.text,
-                            ) {
-                                eprintln!("[refinement] replace failed: {e}");
-                            } else {
-                                println!("[paste] refined");
-                            }
-                        }
-                        Ok(_) => println!("[refinement] no changes needed"),
-                        Err(e) => eprintln!("[refinement] failed, keeping draft: {e}"),
-                    }
+                    println!("[paste] done");
 
                     send(TrayStatus::Success);
                     // Revert tray to Idle after success flash (handled by tray loop timer,
