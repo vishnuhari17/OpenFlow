@@ -15,3 +15,5 @@ tap = "vishnuhari17/homebrew-tap"
 targets = ["aarch64-apple-darwin"]
 # Publish jobs to run in CI
 publish-jobs = ["homebrew"]
+# Allow manual CI workflow modifications (custom DMG packaging)
+allow-dirty = true
