@@ -1,6 +1,6 @@
  [package]
 name = "openflow"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 description = "Open-source Wispr Flow clone — fast, private, voice-to-text for macOS"
 license = "MIT"

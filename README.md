@@ -68,7 +68,9 @@ brew install vishnuhari17/tap/openflow
 
 ### Manual (DMG)
 
-Download the latest `.dmg` from [Releases](https://github.com/vishnuhari17/OpenFlow/releases), drag `OpenFlow.app` to Applications, and double-click to launch.
+Download the latest `.dmg` from [Releases](https://github.com/vishnuhari17/OpenFlow/releases), open it, and drag `OpenFlow.app` to the **Applications** folder. Then double-click `OpenFlow.app` from Applications to launch.
+
+> **Important:** Do **not** run the app directly from the DMG. You must drag it to `/Applications` first, otherwise Launch at Login won't work and macOS may show a security prompt on every launch.
 
 ### Build from source
 
@@ -96,6 +98,10 @@ openflow live
 ```
 
 On first launch, macOS will prompt for **Accessibility** and **Input Monitoring** permissions. Both are required — OpenFlow uses them to read screen context and detect key presses.
+
+### Launch at Login
+
+Once the app is running, click the menubar icon and toggle **"Launch at Login"**. This creates a LaunchAgent that starts OpenFlow automatically when you log in. Run `openflow setup` first to clear any quarantine attributes that would otherwise cause macOS to prompt on every login.
 
 ---
 

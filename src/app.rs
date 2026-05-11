@@ -134,7 +134,7 @@ impl AssistantApp {
         println!("OpenFlow setup\n");
 
         // 1. Permissions
-        println!("Step 1/3 — Permissions");
+        println!("Step 1/4 — Permissions");
         let perms = macos::permission_snapshot(true);
         let ok = |v: bool| if v { "✓" } else { "✗ MISSING" };
         println!("  Accessibility:      {}", ok(perms.accessibility));
@@ -148,8 +148,21 @@ impl AssistantApp {
         }
         println!("  All permissions granted.");
 
-        // 2. Config file
-        println!("\nStep 2/3 — Config file");
+        // 2. Quarantine removal
+        println!("\nStep 2/4 — App integrity");
+        if let Ok(exe) = std::env::current_exe() {
+            crate::launchd::remove_quarantine(&exe);
+        }
+        // Also strip quarantine from the enclosing .app bundle if inside one.
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(app_root) = crate::launchd::find_app_bundle_root(&exe) {
+                crate::launchd::remove_quarantine(&app_root);
+            }
+        }
+        println!("  ✓ quarantine cleared (if present)");
+
+        // 3. Config file
+        println!("\nStep 3/4 — Config file");
         AppConfig::write_default_if_missing();
         if let Some(path) = AppConfig::path() {
             println!("  Config: {}", path.display());
@@ -159,8 +172,8 @@ impl AssistantApp {
         }
         println!("  Hold key: {}", self.config.hold_key);
 
-        // 3. API key check
-        println!("\nStep 3/3 — Groq API key");
+        // 4. API key check
+        println!("\nStep 4/4 — Groq API key");
         match std::env::var("GROQ_API_KEY") {
             Err(_) => {
                 println!("  ✗ GROQ_API_KEY not found in environment.");
