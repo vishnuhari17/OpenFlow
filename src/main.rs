@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod domain;
+mod launchd;
 mod pipeline;
 mod platform;
 mod services;
@@ -116,7 +117,8 @@ fn run_with_tray(config: AppConfig, trigger: String) -> Result<(), String> {
     });
 
     // Tray event loop blocks the main thread.
-    tray::run_event_loop(status_rx);
+    let launch_enabled = launchd::is_enabled();
+    tray::run_event_loop(status_rx, launch_enabled);
     Ok(())
 }
 

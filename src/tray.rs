@@ -18,7 +18,7 @@ use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use tray_icon::{
-    menu::{Menu, MenuEvent, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
     Icon, TrayIconBuilder, TrayIconEvent,
 };
 
@@ -40,7 +40,13 @@ pub enum TrayStatus {
 
 /// Run the tray icon event loop on the **main thread**. Blocks until the user
 /// chooses Quit from the tray menu or the process is otherwise terminated.
-pub fn run_event_loop(status_rx: Receiver<TrayStatus>) {
+///
+/// `launch_at_login_enabled` controls the initial checked state of the
+/// "Launch at Login" menu item.
+pub fn run_event_loop(
+    status_rx: Receiver<TrayStatus>,
+    launch_at_login_enabled: bool,
+) {
     // macOS: ActivationPolicy::Accessory = no Dock icon, pure background agent.
     #[cfg(target_os = "macos")]
     let event_loop = EventLoopBuilder::new()
@@ -53,10 +59,15 @@ pub fn run_event_loop(status_rx: Receiver<TrayStatus>) {
         .build()
         .expect("failed to create event loop");
 
+    let launch_item = CheckMenuItem::new("Launch at Login", true, launch_at_login_enabled, None);
+    let launch_id = launch_item.id().clone();
+    let separator = PredefinedMenuItem::separator();
     let quit_item = MenuItem::new("Quit OpenFlow", true, None);
     let quit_id = quit_item.id().clone();
 
     let menu = Menu::new();
+    menu.append(&launch_item).unwrap();
+    menu.append(&separator).unwrap();
     menu.append(&quit_item).unwrap();
 
     let tray = TrayIconBuilder::new()
@@ -69,6 +80,10 @@ pub fn run_event_loop(status_rx: Receiver<TrayStatus>) {
     // After a Success flash we revert to Idle after this delay.
     const SUCCESS_FLASH_MS: u64 = 1_200;
     let mut success_at: Option<Instant> = None;
+
+    // Track the Launch at Login toggle state so we don't call launchctl on
+    // every event-loop tick. Only mutate when the user actually clicks.
+    let mut launch_enabled = launch_at_login_enabled;
 
     event_loop
         .run(move |_event: Event<()>, elwt: &EventLoopWindowTarget<()>| {
@@ -86,11 +101,29 @@ pub fn run_event_loop(status_rx: Receiver<TrayStatus>) {
                 }
             }
 
-            // Handle menu item clicks (Quit).
+            // Handle menu item clicks.
             if let Ok(event) = MenuEvent::receiver().try_recv() {
                 if event.id == quit_id {
                     elwt.exit();
                     return;
+                }
+                if event.id == launch_id {
+                    launch_enabled = !launch_enabled;
+                    if launch_enabled {
+                        if let Err(e) = crate::launchd::enable() {
+                            eprintln!("[launchd] enable failed: {e}");
+                            // Revert on failure.
+                            launch_enabled = false;
+                        }
+                    } else {
+                        if let Err(e) = crate::launchd::disable() {
+                            eprintln!("[launchd] disable failed: {e}");
+                            // We still toggle visually — the plist is the source
+                            // of truth and removal may have failed for benign
+                            // reasons (file already gone).
+                        }
+                    }
+                    launch_item.set_checked(launch_enabled);
                 }
             }
 

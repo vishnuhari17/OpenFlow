@@ -19,6 +19,10 @@ Icon?
 *.swp
 *.swo
 
+# Prototypes (contain API keys — NEVER commit)
+prototypes/
+Final.mov
+
 # Audio test files
 *.m4a
 *.wav
